@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "brokerusers" ALTER COLUMN "loginUsrid" DROP NOT NULL,
+ALTER COLUMN "username" DROP NOT NULL,
+ALTER COLUMN "password" DROP NOT NULL,
+ALTER COLUMN "role" DROP NOT NULL,
+ALTER COLUMN "marginType" DROP NOT NULL,
+ALTER COLUMN "segmentAllow" DROP NOT NULL,
+ALTER COLUMN "ledgerBalanceClose" DROP NOT NULL,
+ALTER COLUMN "profitTradeHoldMinSec" DROP NOT NULL,
+ALTER COLUMN "lossTradeHoldMinSec" DROP NOT NULL,
+ALTER COLUMN "intradaySquare" DROP NOT NULL;

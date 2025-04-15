@@ -1,0 +1,570 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Role {
+    id        String   @id @default(uuid())
+    name      String
+    price     Float?   @default(0)
+    isDeleted Boolean  @default(false)
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    modules     Module[]
+    roleModules RoleModule[]
+    users       User[]
+}
+
+model Module {
+    id        String   @id @default(uuid())
+    name      String
+    isDeleted Boolean  @default(false)
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    roles       Role[]
+    roleModules RoleModule[]
+}
+
+model RoleModule {
+    id        String   @id @default(uuid())
+    roleId    String
+    moduleId  String
+    isDeleted Boolean  @default(false)
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+    module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+}
+
+model User {
+    id                   String   @id @default(uuid())
+    roleId               String?
+    parentId             String?
+    name                 String
+    email                String
+    phone                String
+    address              String?
+    billingAddress       String?
+    country              String?
+    city                 String?
+    postalCode           String?
+    image                String?  @default("images/user/user.png")
+    password             String?  @db.Text
+    otp                  Int?
+    otpCount             Int?     @default(0)
+    initialPaymentAmount Float?   @default(0)
+    initialPaymentDue    Float?   @default(0)
+    installmentTime      Float?   @default(0)
+    refreshToken         String?  @db.Text
+    isActive             Boolean  @default(true)
+    isDeleted            Boolean  @default(false)
+    createdBy            String?
+    updatedBy            String?
+    deletedBy            String?
+    createdAt            DateTime @default(now())
+    updatedAt            DateTime @updatedAt
+
+    role     Role?  @relation(fields: [roleId], references: [id])
+    parent   User?  @relation("ParentIdUserId", fields: [parentId], references: [id])
+    children User[] @relation("ParentIdUserId")
+
+    payments   Payment[]
+    categories Category[]
+    campaigns  Campaign[]
+    suppliers  Supplier[]
+    products   Product[]
+    wishlist   Wishlist[]
+    review     Review[]
+    order      Order[]
+    preorder   Preorder[]
+}
+
+model Banner {
+    id        String   @id @default(uuid())
+    title     String
+    subtitle  String
+    image     String
+    url       String?
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Payment {
+    id        String    @id @default(uuid())
+    userId    String
+    date      DateTime? @default(now())
+    amount    Float     @default(0)
+    due       Float?    @default(0)
+    isDeleted Boolean   @default(false)
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+    id        String   @id @default(uuid())
+    userId    String
+    name      String
+    image     String?  @default("images/category/category.png")
+    slug      String
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    isActive  Boolean  @default(true)
+    isDeleted Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+    campaigns      Campaign[]
+    products       Product[]
+    subcategory    Subcategory[]
+    subsubcategory Subsubcategory[]
+}
+
+model Subcategory {
+    id         String   @id @default(uuid())
+    categoryId String
+    name       String   @unique
+    image      String?
+    slug       String   @db.Text
+    isActive   Boolean  @default(true)
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    category       Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    subsubcategory Subsubcategory[]
+    product        Product[]
+}
+
+model Subsubcategory {
+    id            String   @id @default(uuid())
+    categoryId    String
+    subcategoryId String
+    name          String   @unique
+    image         String?
+    slug          String   @db.Text
+    isActive      Boolean  @default(true)
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    subcategory Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+    category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    product     Product[]
+}
+
+model Campaign {
+    id         String    @id @default(uuid())
+    userId     String
+    name       String
+    image      String?   @default("images/campaign/campaign.png")
+    date       DateTime? @default(now())
+    slug       String
+    categoryId String
+    viewCount  Int?      @default(0)
+    createdBy  String?
+    updatedBy  String?
+    deletedBy  String?
+    isActive   Boolean   @default(true)
+    isDeleted  Boolean   @default(false)
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
+    category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    product  Product[]
+}
+
+model Brand {
+    id        String   @id @default(uuid())
+    name      String   @unique
+    image     String?
+    slug      String   @db.Text
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    product Product[]
+}
+
+model Supplier {
+    id        String   @id @default(uuid())
+    userId    String
+    name      String
+    address   String
+    phone     String
+    email     String?
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    isDeleted Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    products Product[]
+}
+
+model Product {
+    id               String   @id @default(uuid())
+    userId           String
+    categoryId       String
+    subcategoryId    String?
+    subsubcategoryId String?
+    campaignId       String?
+    supplierId       String?
+    brandId          String?
+    productCode      String?  @default(nanoid(6))
+    barcode          String?  @default(nanoid(12))
+    name             String
+    shortDescription String?  @db.Text
+    longDescription  String?  @db.Text
+    sku              String?
+    isTrending       Boolean  @default(false)
+    isFeatured       Boolean  @default(false)
+    viewCount        Int?     @default(0)
+    slug             String
+    createdBy        String?
+    updatedBy        String?
+    deletedBy        String?
+    isActive         Boolean  @default(true)
+    isDeleted        Boolean  @default(false)
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+
+    user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+    category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    campaign       Campaign?       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+    supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+    brand          Brand?          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+    subcategory    Subcategory?    @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+    subsubcategory Subsubcategory? @relation(fields: [subsubcategoryId], references: [id], onDelete: Cascade)
+
+    images            ProductImage[]
+    productAttributes ProductAttribute[]
+    orderItems        OrderItem[]
+    wishlist          Wishlist[]
+    review            Review[]
+    preorder          Preorder[]
+}
+
+model ProductAttribute {
+    id                    String   @id @default(uuid())
+    productId             String
+    size                  String
+    costPrice             Float
+    retailPrice           Float
+    discountPercent       Float?   @default(0)
+    discountPrice         Float?   @default(0)
+    discountedRetailPrice Float
+    stockAmount           Float
+    isDeleted             Boolean  @default(false)
+    createdBy             String?
+    updatedBy             String?
+    deletedBy             String?
+    createdAt             DateTime @default(now())
+    updatedAt             DateTime @updatedAt
+
+    product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+    orderItem OrderItem[]
+    preorder  Preorder[]
+}
+
+model ProductImage {
+    id        String   @id @default(uuid())
+    productId String
+    image     String?  @default("images/product/product.png")
+    isDeleted Boolean  @default(false)
+    createdBy String?
+    updatedBy String?
+    deletedBy String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+enum OrderStatus {
+    PENDING
+    INPROGRESS
+    DELIVERED
+    REFUNDED
+    CANCELED
+}
+
+model Order {
+    id                     String       @id @default(uuid())
+    userId                 String?
+    couponId               String?
+    invoiceNumber          String?      @default(nanoid(6))
+    customerName           String?
+    customerPhone          String?
+    customerAddress        String?
+    customerBillingAddress String?
+    customerEmail          String?
+    customerCity           String?
+    customerPostalCode     String?
+    totalItems             Float
+    subtotalCost           Float
+    subtotal               Float
+    paymentMethod          String?      @default("COD")
+    status                 OrderStatus? @default(PENDING)
+    otp                    String?
+    deliveryChargeInside   Float?
+    deliveryChargeOutside  Float?
+    isDeleted              Boolean      @default(false)
+    createdBy              String?
+    updatedBy              String?
+    createdAt              DateTime     @default(now())
+    updatedAt              DateTime     @updatedAt
+
+    coupon     Coupon?     @relation(fields: [couponId], references: [id], onDelete: Cascade)
+    user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+    orderItems OrderItem[]
+}
+
+model OrderItem {
+    id                    String   @id @default(uuid())
+    orderId               String
+    productId             String
+    productAttributeId    String
+    name                  String
+    size                  String
+    costPrice             Float
+    retailPrice           Float
+    discountPercent       Float?   @default(0)
+    discountPrice         Float?   @default(0)
+    discountedRetailPrice Float
+    quantity              Float
+    totalCostPrice        Float
+    totalPrice            Float
+    isDeleted             Boolean  @default(false)
+    createdBy             String?
+    updatedBy             String?
+    createdAt             DateTime @default(now())
+    updatedAt             DateTime @updatedAt
+
+    order            Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    product          Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+    productAttribute ProductAttribute @relation(fields: [productAttributeId], references: [id], onDelete: Cascade)
+}
+
+model Wishlist {
+    id        String   @id @default(uuid())
+    productId String
+    userId    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+    id        String   @id @default(uuid())
+    productId String
+    userId    String
+    rating    Float
+    comment   String?  @db.Text
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+    id              String   @id @default(uuid())
+    code            String
+    name            String
+    orderPriceLimit Float?
+    discountAmount  Float
+    isActive        Boolean  @default(true)
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+
+    order Order[]
+}
+
+model Preorder {
+    id                 String   @id @default(uuid())
+    productId          String
+    productAttributeId String?
+    userId             String
+    createdAt          DateTime @default(now())
+    updatedAt          DateTime @updatedAt
+
+    product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+    productAttribute ProductAttribute? @relation(fields: [productAttributeId], references: [id], onDelete: Cascade)
+    user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Newsletter {
+    id        String   @id @default(uuid())
+    email     String
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Contact {
+    id        String   @id @default(uuid())
+    name      String
+    email     String
+    subject   String
+    message   String
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model brokerusers {
+  id                      Int      @id @default(autoincrement())
+  loginUsrid              String?  
+  username                String?  
+  password                String?  
+  role                    String?  
+  marginType              String?  
+  segmentAllow            String?  
+  intradaySquare          Boolean? 
+  ledgerBalanceClose      Int?     
+  profitTradeHoldMinSec   Int?     
+  lossTradeHoldMinSec     Int?     
+  mcx_maxExchLots         Int?     
+  mcx_commissionType      String?  
+  mcx_commission          Int?     
+  mcx_maxLots             Int?     
+  mcx_orderLots           Int?     
+  mcx_limitPercentage     Int?     
+  mcx_intraday            Int?     
+  mcx_holding             String?  
+  mcxOPTBUY_commissionType String?
+  mcxOPTBUY_commission      Int?     
+  mcxOPTBUY_strike          Int?     
+  mcxOPTBUY_allow           String?  
+  mcxOPTSELL_commissionType String?   
+  mcxOPTSELL_commission    Int?       
+  mcxOPTSELL_strike        Int?       
+  mcxOPTSELL_allow         String?   
+
+  mcxOPT_maxLots           Int?      
+  mcxOPT_orderLots         Int?      
+  mcxOPT_limitPercentage   Int?      
+  mcxOPT_intraday          Int?      
+  mcxOPT_holding           Int?      
+  mcxOPT_sellingOvernight  String?   
+
+  nse_maxExchLots         Int?       
+  idxNSE_commissionType   String?    
+  idxNSE_commission       Int?       
+  idxNSE_maxLots          Int?       
+  idxNSE_orderLots        Int?       
+  idxNSE_limitPercentage  Int?       
+  idxNSE_intraday         Int?       
+  idxNSE_holding          Int?       
+
+  // Added for IDXOPTBUY
+  idxOPTBUY_commissionType String?    
+  idxOPTBUY_commission      Int?       
+  idxOPTBUY_strike          Int?       
+  idxOPTBUY_allow           String?   
+
+  // Added for IDXOPTSELL
+  idxOPTSELL_commissionType String?   
+  idxOPTSELL_commission    Int?       
+  idxOPTSELL_strike        Int?       
+  idxOPTSELL_allow         String?   
+
+  // Added for IDXOPT
+  idxOPT_maxLots           Int?      
+  idxOPT_orderLots         Int?      
+  idxOPT_expiryLossHold    Int?      
+  idxOPT_expiryProfitHold  Int?      
+  idxOPT_expiryIntradayMargin Int?      
+  idxOPT_limitPercentage   Int?      
+  idxOPT_intraday          Int?      
+  idxOPT_holding           Int?      
+  idxOPT_sellingOvernight  String?   
+
+  // Added for STKOPTBUY
+  stkOPTBUY_commissionType String?    
+  stkOPTBUY_commission     Int?       
+  stkOPTBUY_strike         Int?       
+  stkOPTBUY_allow          String?   
+
+   // Added for STKOPSELL
+    STKOPTSELL_commissionType String?
+    STKOPTSELL_commission     Int?
+    STKOPTSELL_strike          Int?
+    STKOPTSELL_allow          String?
+
+    //Added for STKOP
+
+        STKOPT_maxLots          Int?
+        STKOPT_orderLots        Int? 
+        STKOPT_limitPercentage  Int?
+        STKOPT_intraday         Int?
+        STKOPT_holding          Int?                      
+        STKOPT_sellingOvernight String? 
+
+
+
+
+}
+
+
+
+model TradeOrder {
+ id        String   @id @default(uuid())
+  scriptName   String?   // Stock name
+  ltp          Float?   // Last traded price
+  bidPrice     Float?   // Bid price
+  askPrice     Float?   // Ask price
+  ltq          Float?   // Last traded quantity
+  orderType    String   // "BUY" or "SELL"
+  lotSize      Int?      // Lot size
+  orderLots    Int?      // Order lots
+  quantity     Int?      // Order quantity
+  priceType    String?   // "Market" or "Limit"
+  isStopLossTarget Boolean? // Toggle for Stop Loss / Target
+  stopLoss     Float?   // Stop Loss price (if applicable)
+  target       Float?   // Target price (if applicable)
+  margin       Float?   // Margin
+  carry        Float?   // Carry value
+  marginLimit  Float?   // Margin limit
+  userId       String?   // User placing the order
+  createdAt    DateTime @default(now())  // Timestamp
+}
+
+
+
+model Deposit {
+  id            Int      @id @default(autoincrement())
+  depositAmount Float?
+  depositImage  String?  
+  loginUserId   String?  // Make it optional to prevent migration errors
+  depositType   String   @default("Deposit")
+  createdAt     DateTime @default(now())
+ 
+}

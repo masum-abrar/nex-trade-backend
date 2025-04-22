@@ -16,7 +16,7 @@ import {
   usersUserList,
 } from "../../utils/modules.js";
 import verify from "../../utils/verifyToken.js";
-import { createBrokerUser, createDeposit, deleteOrder, getDeposits, getExecutedOrders, loginBrokerUser, placeOrder } from "../../controllers/auth/auth.js";
+import { createBrokerUser, createDeposit, createWithdraw, deleteOrder, getBrokerUserById, getbrokerUsers, getDeposits, getExecutedOrders, getWithdraws, loginBrokerUser, placeOrder, updateBrokerUser } from "../../controllers/auth/auth.js";
 
 
 const router = express.Router();
@@ -36,12 +36,17 @@ router.put("/v1/customer/auth/users/:id", verify, updateUser);
 //next Trade
 // router.post("/v1/brokerusers", createBrokerUser);
 router.post("/v1/brokerusers", createBrokerUser);
+router.get("/v1/brokerusers/:userId", getBrokerUserById);
+
 router.post("/v1/loginbrokerusers", loginBrokerUser); // for user and broker login
+router.get("/v1/brokerusers", getbrokerUsers ); // for user and broker login
+router.put('/v1/brokerusers/:userId', updateBrokerUser);
 router.post("/v1/tradeorder", placeOrder)
 router.get("/v1/executed-orders", getExecutedOrders )
 router.get("/v1/limit-orders", getExecutedOrders )
 router.delete("/v1/delete-order/:id", deleteOrder );
 router.post("/v1/deposite", createDeposit );
 router.get("/v1/deposites", getDeposits );
-
+router.post("/v1/withdraw", createWithdraw );
+router.get("/v1/withdraws", getWithdraws );
 export default router;

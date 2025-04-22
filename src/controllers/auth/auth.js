@@ -598,6 +598,46 @@ export const createBrokerUser = async (req, res) => {
   }
 }
 
+export const getBrokerUserById = async (req, res) => {
+  const { userId } = req.params;
+  const id = parseInt(userId, 10);
+
+  console.log("🔍 Received userId:", userId, "Parsed ID:", id);
+
+  if (isNaN(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid user ID",
+    });
+  }
+
+  try {
+    const user = await prisma.brokerusers.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching user by ID:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
 export const placeOrder = async (req, res) => {
   try {
     const {
@@ -696,13 +736,14 @@ export const deleteOrder = async (req, res) => {
 }
 
 export const loginBrokerUser = async (req, res) => {
-  const { userId, password , username } = req.body;
+  const { userId, password , username,id } = req.body;
   console.log(req.body);
   
   try {
     // Check for user in the database
     const user = await prisma.brokerusers.findFirst({
-      where: { loginUsrid: userId } // Assuming loginUsrid is unique
+      where: { loginUsrid: userId },
+      // Assuming loginUsrid is unique
     });
 
     // If user is not found, send response and exit
@@ -717,10 +758,13 @@ export const loginBrokerUser = async (req, res) => {
     // ✅ Send username along with other details
     return res.status(200).json({
       message: 'Login successful',
-      role: user.role,  // Send user role
-      userId: user.loginUsrid, // Send userId
-      username: user.username // ✅ Include username
+      role: user.role,
+      userId: user.loginUsrid,
+      username: user.username,
+      id: user.id,
+      ledgerBalanceClose: user.ledgerBalanceClose, // ✅ This line is fine
     });
+    
   } catch (error) {
     console.error('Login error:', error);
 
@@ -766,3 +810,269 @@ export const getDeposits = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+export const createWithdraw = async (req, res) => {
+  try {
+    const {
+      type,
+      amount,
+      upi,
+      accountName,
+      accountNumber,
+      ifsc,
+      loginUserId,
+      username,
+    } = req.body;
+
+    // Validation check
+    if (
+      !type ||
+      !amount ||
+      !upi ||
+      !accountName ||
+      !accountNumber ||
+      !ifsc ||
+      !loginUserId ||
+      !username
+    ) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const newWithdraw = await prisma.withdraw.create({
+      data: {
+        type,
+        amount: parseFloat(amount), // Float
+        upi,
+        accountName,
+        accountNumber,
+        ifsc,
+        loginUserId,
+        username,
+      },
+    });
+
+    res.status(201).json(newWithdraw);
+  } catch (error) {
+    console.error("Error creating withdraw request:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const getWithdraws = async (req, res) => {
+  try {
+    const withdraws = await prisma.Withdraw.findMany();
+    res.json(withdraws);
+  } catch (error) {
+    console.error("Error fetching withdraws:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const getbrokerUsers = async (req, res) => {
+  try {
+    const brokerusers = await prisma.brokerusers.findMany();
+    res.json(brokerusers);
+  } catch (error) {
+    console.error("Error fetching deposits:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const updateBrokerUser = async (req, res) => {
+  const { userId } = req.params;
+  const {
+    username,
+    password,
+    role,
+    marginType,
+    intradaySquare,
+    ledgerBalanceClose,
+    profitTradeHoldMinSec,
+    lossTradeHoldMinSec,
+    segments,
+
+    // MCX main
+    mcx_maxExchLots,
+    mcx_commissionType,
+    mcx_commission,
+    mcx_maxLots,
+    mcx_orderLots,
+    mcx_limitPercentage,
+    mcx_intraday,
+    mcx_holding,
+
+    // MCX Option Buying
+    mcxOPTBUY_commissionType,
+    mcxOPTBUY_commission,
+    mcxOPTBUY_strike,
+    mcxOPTBUY_allow,
+
+    // MCX Option Selling
+    mcxOPTSELL_commissionType,
+    mcxOPTSELL_commission,
+    mcxOPTSELL_strike,
+    mcxOPTSELL_allow,
+
+    nse_maxExchLots,
+    idxNSE_commissionType,
+    idxNSE_commission,
+    idxNSE_maxLots,
+    idxNSE_orderLots,
+    idxNSE_limitPercentage,
+    idxNSE_intraday,
+    idxNSE_holding,
+
+    // New fields for IDXOPTBUY
+    idxOPTBUY_commissionType,
+    idxOPTBUY_commission,
+    idxOPTBUY_strike,
+    idxOPTBUY_allow,
+
+    // New fields for IDXOPTSELL
+    idxOPTSELL_commissionType,
+    idxOPTSELL_commission,
+    idxOPTSELL_strike,
+    idxOPTSELL_allow,
+
+    // New fields for IDXOPT
+    idxOPT_maxLots,
+    idxOPT_orderLots,
+    idxOPT_expiryLossHold,
+    idxOPT_expiryProfitHold,
+    idxOPT_expiryIntradayMargin,
+    idxOPT_limitPercentage,
+    idxOPT_intraday,
+    idxOPT_holding,
+    idxOPT_sellingOvernight,
+
+    // New fields for STKOPTBUY
+    stkOPTBUY_commissionType,
+    stkOPTBUY_commission,
+    stkOPTBUY_strike,
+    stkOPTBUY_allow,
+
+    STKOPTSELL_commissionType,
+    STKOPTSELL_commission,
+    STKOPTSELL_strike,
+    STKOPTSELL_allow,
+
+    //Added for STKOP
+
+    STKOPT_maxLots,
+    STKOPT_orderLots,
+    STKOPT_limitPercentage,
+    STKOPT_intraday,
+    STKOPT_holding,
+    STKOPT_sellingOvernight 
+  } = req.body;
+
+  try {
+    const updatedUser = await prisma.brokerusers.update({
+      where: { id: parseInt(userId) },
+      data: {
+        username,
+        password,
+        role,
+        marginType,
+        intradaySquare: intradaySquare === "true",
+        ledgerBalanceClose,
+        profitTradeHoldMinSec,
+        lossTradeHoldMinSec,
+        segmentAllow: Array.isArray(segments) ? segments.join(",") : segments,
+      
+        // MCX fields
+        mcx_maxExchLots: mcx_maxExchLots ? parseInt(mcx_maxExchLots) : null,
+        mcx_commissionType,
+        mcx_commission: mcx_commission ? parseFloat(mcx_commission) : null,
+        mcx_maxLots: mcx_maxLots ? parseInt(mcx_maxLots) : null,
+        mcx_orderLots: mcx_orderLots ? parseInt(mcx_orderLots) : null,
+        mcx_limitPercentage: mcx_limitPercentage ? parseFloat(mcx_limitPercentage) : null,
+        mcx_intraday: mcx_intraday ? parseInt(mcx_intraday) : null,
+        mcx_holding,
+      
+        // MCX Option Buying
+        mcxOPTBUY_commissionType,
+        mcxOPTBUY_commission: mcxOPTBUY_commission ? parseFloat(mcxOPTBUY_commission) : null,
+        mcxOPTBUY_strike: mcxOPTBUY_strike ? parseFloat(mcxOPTBUY_strike) : null,
+        mcxOPTBUY_allow,
+      
+        // MCX Option Selling
+        mcxOPTSELL_commissionType,
+        mcxOPTSELL_commission: mcxOPTSELL_commission ? parseFloat(mcxOPTSELL_commission) : null,
+        mcxOPTSELL_strike: mcxOPTSELL_strike ? parseFloat(mcxOPTSELL_strike) : null,
+        mcxOPTSELL_allow,
+      
+        // NSE
+        nse_maxExchLots: nse_maxExchLots ? parseInt(nse_maxExchLots) : null,
+      
+        // IDXNSE
+        idxNSE_commissionType,
+        idxNSE_commission: idxNSE_commission ? parseFloat(idxNSE_commission) : null,
+        idxNSE_maxLots: idxNSE_maxLots ? parseInt(idxNSE_maxLots) : null,
+        idxNSE_orderLots: idxNSE_orderLots ? parseInt(idxNSE_orderLots) : null,
+        idxNSE_limitPercentage: idxNSE_limitPercentage ? parseFloat(idxNSE_limitPercentage) : null,
+        idxNSE_intraday: idxNSE_intraday ? parseInt(idxNSE_intraday) : null,
+        idxNSE_holding: idxNSE_holding ? parseInt(idxNSE_holding) : null,
+      
+        // IDXOPTBUY
+        idxOPTBUY_commissionType,
+        idxOPTBUY_commission: idxOPTBUY_commission ? parseFloat(idxOPTBUY_commission) : null,
+        idxOPTBUY_strike: idxOPTBUY_strike ? parseFloat(idxOPTBUY_strike) : null,
+        idxOPTBUY_allow,
+      
+        // IDXOPTSELL
+        idxOPTSELL_commissionType,
+        idxOPTSELL_commission: idxOPTSELL_commission ? parseFloat(idxOPTSELL_commission) : null,
+        idxOPTSELL_strike: idxOPTSELL_strike ? parseFloat(idxOPTSELL_strike) : null,
+        idxOPTSELL_allow,
+      
+        // IDXOPT
+        idxOPT_maxLots: idxOPT_maxLots ? parseInt(idxOPT_maxLots) : null,
+        idxOPT_orderLots: idxOPT_orderLots ? parseInt(idxOPT_orderLots) : null,
+        idxOPT_expiryLossHold: idxOPT_expiryLossHold ? parseInt(idxOPT_expiryLossHold) : null,
+        idxOPT_expiryProfitHold: idxOPT_expiryProfitHold ? parseInt(idxOPT_expiryProfitHold) : null,
+        idxOPT_expiryIntradayMargin: idxOPT_expiryIntradayMargin ? parseFloat(idxOPT_expiryIntradayMargin) : null,
+        idxOPT_limitPercentage: idxOPT_limitPercentage ? parseFloat(idxOPT_limitPercentage) : null,
+        idxOPT_intraday: idxOPT_intraday ? parseInt(idxOPT_intraday) : null,
+        idxOPT_holding : idxOPT_holding ? parseInt(idxOPT_holding) : null,
+        idxOPT_sellingOvernight,
+      
+        // STKOPTBUY
+        stkOPTBUY_commissionType,
+        stkOPTBUY_commission: stkOPTBUY_commission ? parseFloat(stkOPTBUY_commission) : null,
+        stkOPTBUY_strike: stkOPTBUY_strike ? parseFloat(stkOPTBUY_strike) : null,
+        stkOPTBUY_allow,
+      
+        // ✅ STKOPTSELL
+        STKOPTSELL_commissionType,
+        STKOPTSELL_commission: STKOPTSELL_commission ? parseFloat(STKOPTSELL_commission) : null,
+        STKOPTSELL_strike: STKOPTSELL_strike ? parseFloat(STKOPTSELL_strike) : null,
+        STKOPTSELL_allow,
+      
+        // ✅ STKOPT
+        STKOPT_maxLots: STKOPT_maxLots ? parseInt(STKOPT_maxLots) : null,
+        STKOPT_orderLots: STKOPT_orderLots ? parseInt(STKOPT_orderLots) : null,
+        STKOPT_limitPercentage: STKOPT_limitPercentage ? parseFloat(STKOPT_limitPercentage) : null,
+        STKOPT_intraday: STKOPT_intraday ? parseInt(STKOPT_intraday) : null,
+        STKOPT_holding: STKOPT_holding ? parseInt(STKOPT_holding) : null,
+        STKOPT_sellingOvernight,
+      }
+      
+      
+    });
+
+    res.status(200).json({
+      success: true,
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Update failed:", error);
+    res.status(500).json({ success: false, message: "Update failed" });
+  }
+};
+
+
+
+
+
+

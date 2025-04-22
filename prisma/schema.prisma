@@ -458,7 +458,7 @@ model brokerusers {
   mcx_orderLots           Int?     
   mcx_limitPercentage     Int?     
   mcx_intraday            Int?     
-  mcx_holding             String?  
+  mcx_holding             Int?  
   mcxOPTBUY_commissionType String?
   mcxOPTBUY_commission      Int?     
   mcxOPTBUY_strike          Int?     
@@ -566,5 +566,21 @@ model Deposit {
   loginUserId   String?  // Make it optional to prevent migration errors
   depositType   String   @default("Deposit")
   createdAt     DateTime @default(now())
- 
 }
+
+model Withdraw {
+  id             String   @id @default(cuid())
+  type           String
+  amount         Float?
+  upi            String?
+  accountName    String?
+  accountNumber  String?
+  ifsc           String?
+  loginUserId    String?   // now optional
+  username       String?   // now optional
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+

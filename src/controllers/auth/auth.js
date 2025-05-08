@@ -4,6 +4,7 @@ import jsonResponse from '../../utils/jsonResponse.js'
 import jwtSign from '../../utils/jwtSign.js'
 import prisma from '../../utils/prismaClient.js'
 import validateInput from '../../utils/validateInput.js'
+import uploadToCLoudinary from '../../utils/uploadToCloudinary.js'
 
 const module_name = 'auth'
 
@@ -490,7 +491,8 @@ export const createBrokerUser = async (req, res) => {
       STKOPT_limitPercentage,
       STKOPT_intraday,
       STKOPT_holding,
-      STKOPT_sellingOvernight // Added Allow field for STKOPTBUY
+      STKOPT_sellingOvernight ,
+      margin_used,// Added Allow field for STKOPTBUY
     } = req.body
 
     const newUser = await prisma.brokerusers.create({
@@ -581,7 +583,8 @@ export const createBrokerUser = async (req, res) => {
         STKOPT_limitPercentage,
         STKOPT_intraday,
         STKOPT_holding,
-        STKOPT_sellingOvernight
+        STKOPT_sellingOvernight,
+        margin_used,
       }
     })
 
@@ -600,16 +603,11 @@ export const createBrokerUser = async (req, res) => {
 
 export const getBrokerUserById = async (req, res) => {
   const { userId } = req.params;
-  const id = parseInt(userId, 10);
+  const id = userId
 
-  console.log("🔍 Received userId:", userId, "Parsed ID:", id);
+  console.log(" Received userId:", userId, "Parsed ID:", id);
 
-  if (isNaN(id)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid user ID",
-    });
-  }
+ 
 
   try {
     const user = await prisma.brokerusers.findUnique({
@@ -751,9 +749,10 @@ export const loginBrokerUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    if (!password) {
+    if (user.password !== password) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    
 
     // ✅ Send username along with other details
     return res.status(200).json({
@@ -778,17 +777,31 @@ export const loginBrokerUser = async (req, res) => {
 
 export const createDeposit = async (req, res) => {
   try {
-    const { depositAmount, loginUserId, depositType } = req.body;
-    const depositImage = req.file ? req.file.path : null; // Save path or URL if needed
+    const { depositAmount, loginUserId, depositType, status } = req.body;
 
-    // Save deposit data to the database
+    let imageUrl = null;
+
+    if (req.file) {
+      try {
+        const result = await uploadToCLoudinary(req.file, 'deposit_proofs');
+        imageUrl = result.secure_url; // Now you can use the secure_url from Cloudinary
+      } catch (error) {
+        console.error("Cloudinary Upload Error:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image to Cloudinary",
+        });
+      }
+    }
+
     const deposit = await prisma.deposit.create({
-       data: {
-          depositAmount: parseFloat(depositAmount), // Convert depositAmount to a float
-          depositImage, // Store the image path (or null if no image)
-          loginUserId, // Include the user ID from the frontend
-          depositType, // Static Deposit value
-        },
+      data: {
+        depositAmount: parseFloat(depositAmount),
+        depositImage: imageUrl, // Use Cloudinary image URL
+        loginUserId,
+        depositType,
+        status,
+      },
     });
 
     res.status(201).json({
@@ -800,6 +813,9 @@ export const createDeposit = async (req, res) => {
     res.status(500).json({ error: 'Something went wrong while creating the deposit' });
   }
 };
+
+
+
 
 export const getDeposits = async (req, res) => {
   try {
@@ -968,7 +984,7 @@ export const updateBrokerUser = async (req, res) => {
 
   try {
     const updatedUser = await prisma.brokerusers.update({
-      where: { id: parseInt(userId) },
+      where: { id: userId },
       data: {
         username,
         password,
@@ -1070,6 +1086,105 @@ export const updateBrokerUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Update failed" });
   }
 };
+
+export const updateBrokerUserFunds = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { margin } = req.body; // e.g. 46.06
+
+    const numericMargin = Math.floor(parseFloat(margin)); // or Math.round() if you prefer
+    // or Math.round() if you prefer
+
+
+    if (isNaN(numericMargin) || numericMargin <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid margin value' });
+    }
+
+    // Fetch existing user
+    const user = await prisma.brokerusers.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Check if ledgerBalanceClose is sufficient
+    if (user.ledgerBalanceClose < numericMargin) {
+      return res.status(400).json({ success: false, message: 'Insufficient ledger balance' });
+    }
+
+    // Update ledgerBalanceClose and margin_used
+    const updatedUser = await prisma.brokerusers.update({
+      where: { id: userId },
+      data: {
+        ledgerBalanceClose: {
+          decrement: numericMargin,
+        },
+        margin_used: {
+          increment: numericMargin,
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Funds updated successfully',
+      data: {
+        ledgerBalanceClose: updatedUser.ledgerBalanceClose,
+        margin_used: updatedUser.margin_used,
+      },
+    });
+  } catch (error) {
+    console.error('Update Error:', error);
+    res.status(500).json({ success: false, message: 'Error updating funds' });
+  }
+};
+
+// controller/depositController.js
+export const updateDepositStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Accepted", "Rejected"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const updatedDeposit = await prisma.deposit.update({
+      where: { id : parseInt(id) },
+      data: { status },
+    });
+
+    res.json({ success: true, message: "Deposit status updated", data: updatedDeposit });
+  } catch (error) {
+    console.error("Update Deposit Error:", error);
+    res.status(500).json({ success: false, message: "Error updating deposit status" });
+  }
+};
+
+// controller/withdrawController.js
+export const updateWithdrawStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Accepted", "Rejected"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const updatedWithdraw = await prisma.withdraw.update({
+      where: { id },
+      data: { status },
+    });
+
+    res.json({ success: true, message: "Withdraw status updated", data: updatedWithdraw });
+  } catch (error) {
+    console.error("Update Withdraw Error:", error);
+    res.status(500).json({ success: false, message: "Error updating withdraw status" });
+  }
+};
+
 
 
 

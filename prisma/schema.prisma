@@ -440,7 +440,8 @@ model Contact {
 }
 
 model brokerusers {
-  id                      Int      @id @default(autoincrement())
+  id                      String    @id @default(uuid())
+  margin_used             Int?
   loginUsrid              String?  
   username                String?  
   password                String?  
@@ -566,6 +567,7 @@ model Deposit {
   loginUserId   String?  // Make it optional to prevent migration errors
   depositType   String   @default("Deposit")
   createdAt     DateTime @default(now())
+   status        String?
 }
 
 model Withdraw {
@@ -578,7 +580,7 @@ model Withdraw {
   ifsc           String?
   loginUserId    String?   // now optional
   username       String?   // now optional
-  status         String   @default("pending")
+  status         String   @default("Pending")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

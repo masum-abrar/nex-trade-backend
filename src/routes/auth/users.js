@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import {
   banUser,
   deleteUser,
@@ -16,10 +17,12 @@ import {
   usersUserList,
 } from "../../utils/modules.js";
 import verify from "../../utils/verifyToken.js";
-import { createBrokerUser, createDeposit, createWithdraw, deleteOrder, getBrokerUserById, getbrokerUsers, getDeposits, getExecutedOrders, getWithdraws, loginBrokerUser, placeOrder, updateBrokerUser } from "../../controllers/auth/auth.js";
+import { createBrokerUser, createDeposit, createWithdraw, deleteOrder, getBrokerUserById, getbrokerUsers, getDeposits, getExecutedOrders, getWithdraws, loginBrokerUser, placeOrder, updateBrokerUser, updateBrokerUserFunds, updateDepositStatus, updateWithdrawStatus } from "../../controllers/auth/auth.js";
 
 
 const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 router.get("/v1/auth/users", usersList, verify, getUsers);
 router.get("/v1/auth/user/users", usersUserList, verify, getUsersByUser);
@@ -45,8 +48,19 @@ router.post("/v1/tradeorder", placeOrder)
 router.get("/v1/executed-orders", getExecutedOrders )
 router.get("/v1/limit-orders", getExecutedOrders )
 router.delete("/v1/delete-order/:id", deleteOrder );
-router.post("/v1/deposite", createDeposit );
+router.post("/v1/deposite", upload.single('depositImage'), createDeposit );
 router.get("/v1/deposites", getDeposits );
 router.post("/v1/withdraw", createWithdraw );
 router.get("/v1/withdraws", getWithdraws );
+
+// Update ledgerBalanceClose and margin_used for a broker user
+router.put('/v1/brokerusers/:userId/update-funds', updateBrokerUserFunds);
+
+// routes/depositRoutes.js
+router.put("/v1/update-deposites/:id/status", updateDepositStatus);
+
+// routes/withdrawRoutes.js
+router.put("/v1/update-withdraws/:id/status", updateWithdrawStatus);
+
+
 export default router;
